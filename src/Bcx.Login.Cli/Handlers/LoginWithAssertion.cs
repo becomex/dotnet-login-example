@@ -1,9 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Bcx.Login.Cli.Consts;
+using Bcx.Login.Cli.OAuth;
 using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json.Linq;
 
 namespace Bcx.Login.Cli.Handlers
 {
@@ -60,12 +61,23 @@ namespace Bcx.Login.Cli.Handlers
                 })
             };
 
-            var responseToken = await clientToken.SendAsync(requestToken);
+            var tokenRequestResponse = await clientToken.SendAsync(requestToken);
 
-            if (responseToken.IsSuccessStatusCode)
-                Console.WriteLine($"Bearer {JObject.Parse(await responseToken.Content.ReadAsStringAsync())["access_token"]}");
-            else
+            if (!tokenRequestResponse.IsSuccessStatusCode)
+            {
                 Console.WriteLine("Fail");
+                return;
+            }
+
+            var oAuthResponse = await tokenRequestResponse.Content.ReadFromJsonAsync<OAuthTokenResponse>(OAuthConsts.OAuthJsonResponseOptions);
+
+            if (oAuthResponse is null) 
+            {
+                Console.WriteLine("Unable to deserialize response body.");
+                return;
+            }
+
+            Console.WriteLine($"Bearer {oAuthResponse.AccessToken}");
         }
     }
 }

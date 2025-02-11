@@ -1,4 +1,6 @@
-using Newtonsoft.Json.Linq;
+using System.Net.Http.Json;
+using Bcx.Login.Cli.Consts;
+using Bcx.Login.Cli.OAuth;
 
 namespace Bcx.Login.Cli.Handlers
 {
@@ -18,7 +20,7 @@ namespace Bcx.Login.Cli.Handlers
 
             var requestToken = new HttpRequestMessage
             {
-                RequestUri = new Uri("https://login.becomex.com.br/auth/realms/becomex/protocol/openid-connect/token"),
+                RequestUri = new Uri(BecomexConsts.TokenUrl),
                 Method = HttpMethod.Post,
                 Content = new FormUrlEncodedContent(new List<KeyValuePair<string, string>>()
                 {
@@ -31,10 +33,21 @@ namespace Bcx.Login.Cli.Handlers
 
             var responseToken = await clientToken.SendAsync(requestToken);
 
-            if (responseToken.IsSuccessStatusCode)
-                Console.WriteLine($"Bearer: {JObject.Parse(await responseToken.Content.ReadAsStringAsync())["access_token"]}");
-            else
+            if (!responseToken.IsSuccessStatusCode)
+            {
                 Console.WriteLine("Fail");
+                return;
+            }
+
+            var responseMap = await responseToken.Content.ReadFromJsonAsync<OAuthTokenResponse>(OAuthConsts.OAuthJsonResponseOptions);
+
+            if (responseMap is null) 
+            {
+                Console.WriteLine("Unable to deserialize response body.");
+                return;
+            }
+
+            Console.WriteLine($"Bearer: {responseMap.AccessToken}");
         }
     }
 }
